@@ -77,6 +77,8 @@ import {
   UnknownStationFilter,
   WebsocketNetworkConnection,
 } from '@citrineos/util';
+import { RabbitMQChannelManager } from '@citrineos/util/src/queue/rabbit-mq/ChannelManager.js';
+import { RabbitMQConnectionManager } from '@citrineos/util/src/queue/rabbit-mq/ConnectionManager.js';
 import cors from '@fastify/cors';
 import { type JsonSchemaToTsProvider } from '@fastify/type-provider-json-schema-to-ts';
 import type { FastifyInstance } from 'fastify';
@@ -116,6 +118,8 @@ export class CitrineOSServer {
   protected _realTimeAuthorizer!: IAuthorizer;
 
   protected readonly appName: string;
+  protected _connectionManager?: RabbitMQConnectionManager;
+  protected _channelManager?: RabbitMQChannelManager;
 
   /**
    * Constructor for the class.
@@ -193,6 +197,8 @@ export class CitrineOSServer {
   }
 
   async initialize(): Promise<void> {
+    await this.initMessageBrokerConnection();
+
     // Initialize module & API
     // Always initialize API after SwaggerUI
     await this.initSystem();
@@ -257,12 +263,41 @@ export class CitrineOSServer {
     }
   }
 
+  async initMessageBrokerConnection(): Promise<any> {
+    const url = this._config.util.messageBroker.amqp?.url;
+    if (!url) {
+      throw new Error('RabbitMQ URL is not configured');
+    }
+    this._connectionManager = new RabbitMQConnectionManager(this._config.maxReconnectDelay, url);
+    this._channelManager = new RabbitMQChannelManager(this._connectionManager);
+    await this._connectionManager.connect();
+  }
+
   protected _createSender(): IMessageSender {
-    return new RabbitMqSender(this._config, this._logger);
+    const exchange = this._config.util.messageBroker.amqp?.exchange;
+    if (!exchange) {
+      throw new Error('RabbitMQ exchange is not configured');
+    }
+    if (!this._connectionManager || !this._channelManager) {
+      throw new Error('RabbitMQ connection or channel manager is not initialized');
+    }
+    return new RabbitMqSender(
+      exchange,
+      this._connectionManager,
+      this._channelManager,
+      this._logger,
+    );
   }
 
   protected _createHandler(): IMessageHandler {
-    return new RabbitMqReceiver(this._config, this._logger);
+    const exchange = this._config.util.messageBroker.amqp?.exchange;
+    if (!exchange) {
+      throw new Error('RabbitMQ exchange is not configured');
+    }
+    if (!this._channelManager) {
+      throw new Error('RabbitMQ channel manager is not initialized');
+    }
+    return new RabbitMqReceiver(exchange, this._channelManager, this._logger);
   }
 
   protected initHealthCheck() {
