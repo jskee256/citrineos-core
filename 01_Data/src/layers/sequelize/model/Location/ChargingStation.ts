@@ -26,6 +26,7 @@ import {
   PrimaryKey,
   Table,
 } from 'sequelize-typescript';
+import { Op } from 'sequelize';
 import { Tenant } from '../Tenant.js';
 import { Transaction } from '../index.js';
 import { ChargingStationNetworkProfile } from './ChargingStationNetworkProfile.js';
@@ -161,6 +162,53 @@ export class ChargingStation extends Model implements ChargingStationDto {
   static setDefaultTenant(instance: ChargingStation) {
     if (instance.isNewRecord && instance.tenantId == null) {
       instance.tenantId = DEFAULT_TENANT_ID;
+    }
+  }
+
+  @BeforeCreate
+  static async validateTenantStationLimit(instance: ChargingStation) {
+    if (instance.isNewRecord && instance.tenantId) {
+      const tenant = await Tenant.findByPk(instance.tenantId);
+
+      if (tenant && tenant.maxChargingStations !== null) {
+        const currentStationCount = await ChargingStation.count({
+          where: {
+            tenantId: instance.tenantId,
+          },
+        });
+
+        if (currentStationCount >= tenant.maxChargingStations) {
+          throw new Error(
+            `Tenant '${tenant.name}' has reached its maximum limit of ${tenant.maxChargingStations} charging stations. ` +
+              `Current count: ${currentStationCount}, Max allowed: ${tenant.maxChargingStations}`,
+          );
+        }
+      }
+    }
+  }
+
+  @BeforeUpdate
+  static async validateTenantStationLimitOnUpdate(instance: ChargingStation) {
+    if (instance.changed('tenantId') && instance.tenantId) {
+      const tenant = await Tenant.findByPk(instance.tenantId);
+
+      if (tenant && tenant.maxChargingStations !== null) {
+        const currentStationCount = await ChargingStation.count({
+          where: {
+            tenantId: instance.tenantId,
+            id: {
+              [Op.ne]: instance.id, // Exclude this station from count
+            },
+          },
+        });
+
+        if (currentStationCount >= tenant.maxChargingStations) {
+          throw new Error(
+            `Cannot move charging station to tenant '${tenant.name}' - they have reached their maximum limit of ${tenant.maxChargingStations} charging stations. ` +
+              `Current count: ${currentStationCount}, Max allowed: ${tenant.maxChargingStations}`,
+          );
+        }
+      }
     }
   }
 
