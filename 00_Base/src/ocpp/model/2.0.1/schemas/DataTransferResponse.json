@@ -58,7 +58,15 @@
       "$ref": "#/definitions/StatusInfoType"
     },
     "data": {
-      "description": "Data without specified length or format, in response to request.\r\n"
+      "description": "Data without specified length or format, in response to request.\r\n",
+      "oneOf": [
+        { "type": "object", "additionalProperties": true },
+        { "type": "array" },
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" }
+      ]
     }
   },
   "required": ["status"]
