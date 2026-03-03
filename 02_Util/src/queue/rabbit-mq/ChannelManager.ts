@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Contributors to the CitrineOS Project
+//
+// SPDX-License-Identifier: Apache-2.0
+
 import amqp from 'amqplib';
 import { Logger, type ILogObj } from 'tslog';
 import type { RabbitMQConnectionManager } from './ConnectionManager.js';
