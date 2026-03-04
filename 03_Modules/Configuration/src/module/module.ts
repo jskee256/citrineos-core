@@ -302,12 +302,7 @@ export class ConfigurationModule extends AbstractModule {
         }),
       )
       .then(() =>
-        this._deviceModelService.updateDeviceModel(
-          chargingStation,
-          tenantId,
-          stationId,
-          timestamp,
-        ),
+        this._deviceModelService.updateDeviceModel(chargingStation, tenantId, stationId, timestamp),
       )
       .catch((error) => {
         this._logger.error(
