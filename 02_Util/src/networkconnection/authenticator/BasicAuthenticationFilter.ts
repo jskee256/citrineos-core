@@ -27,7 +27,7 @@ export class BasicAuthenticationFilter extends AuthenticatorFilter {
   protected shouldFilter(options: AuthenticationOptions): boolean {
     return (
       (options.securityProfile === 1 || options.securityProfile === 2) &&
-      !options.ignoreAuthorizationHeaders
+      !options.ignoreAuthenticationHeaders
     );
   }
 
