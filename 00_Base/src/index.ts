@@ -30,6 +30,7 @@ export {
 export type { IWebsocketConnection } from './interfaces/cache/types.js';
 export type { IFileAccess, IFileStorage } from './interfaces/files/index.js';
 export {
+  AbstractConnectionManager,
   AbstractMessageHandler,
   AbstractMessageSender,
   EventGroup,
@@ -41,6 +42,7 @@ export {
 } from './interfaces/messages/index.js';
 export type {
   HandlerProperties,
+  IConnectionManager,
   IMessage,
   IMessageConfirmation,
   IMessageContext,

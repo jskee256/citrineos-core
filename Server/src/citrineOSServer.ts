@@ -11,7 +11,6 @@ import type {
   IFileStorage,
   IMessageHandler,
   IMessageRouter,
-  IMessageSender,
   IModule,
   IModuleApi,
   SystemConfig,
@@ -62,6 +61,7 @@ import {
   apiAuthPluginFp,
   Authenticator,
   BasicAuthenticationFilter,
+  BrokerAwareMessageSender,
   CertificateAuthorityService,
   ConnectedStationFilter,
   IdGenerator,
@@ -273,7 +273,7 @@ export class CitrineOSServer {
     await this._connectionManager.connect();
   }
 
-  protected _createSender(): IMessageSender {
+  protected _createSender(): BrokerAwareMessageSender {
     const exchange = this._config.util.messageBroker.amqp?.exchange;
     if (!exchange) {
       throw new Error('RabbitMQ exchange is not configured');
@@ -281,10 +281,10 @@ export class CitrineOSServer {
     if (!this._connectionManager || !this._channelManager) {
       throw new Error('RabbitMQ connection or channel manager is not initialized');
     }
-    return new RabbitMqSender(
-      exchange,
+    return new BrokerAwareMessageSender(
+      new RabbitMqSender(exchange, this._connectionManager, this._channelManager, this._logger),
       this._connectionManager,
-      this._channelManager,
+      this._config.maxCallLengthSeconds,
       this._logger,
     );
   }
@@ -391,10 +391,12 @@ export class CitrineOSServer {
       this._logger,
     );
 
+    const routerSender = this._createSender();
+
     this._router = new MessageRouterImpl(
       this._config,
       this._cache,
-      this._createSender(),
+      routerSender,
       this._createHandler(),
       webhookDispatcher,
       async (_identifier: string, _message: string) => {},
@@ -412,7 +414,11 @@ export class CitrineOSServer {
       this._repositoryStore.locationRepository.doesChargingStationExistByStationId.bind(
         this._repositoryStore.locationRepository,
       ),
+      this._connectionManager,
     );
+
+    routerSender.onCallTimeout = (stationId, tenantId) =>
+      this._networkConnection!.disconnect(tenantId, stationId).then(() => undefined);
 
     this._router.networkHook = this._networkConnection.bindNetworkHook();
 

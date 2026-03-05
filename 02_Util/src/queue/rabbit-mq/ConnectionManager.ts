@@ -2,29 +2,22 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+import { AbstractConnectionManager } from '@citrineos/base';
 import amqp from 'amqplib';
-import { EventEmitter } from 'events';
-import { Logger, type ILogObj } from 'tslog';
+import { type ILogObj, Logger } from 'tslog';
 
-export class RabbitMQConnectionManager extends EventEmitter {
+export class RabbitMQConnectionManager extends AbstractConnectionManager<amqp.Connection> {
   private connection: amqp.Connection | null = null;
   private isConnecting = false;
   private reconnectAttempts = 0;
   private reconnectDelay = 1000; // Start with 1 second
-
-  protected _logger: Logger<ILogObj>;
-
-  public state = 'disconnected';
 
   constructor(
     private maxReconnectDelay: number,
     private url: string,
     logger?: Logger<ILogObj>,
   ) {
-    super();
-    this._logger = logger
-      ? logger.getSubLogger({ name: this.constructor.name })
-      : new Logger<ILogObj>({ name: this.constructor.name });
+    super(logger);
   }
 
   async connect(): Promise<amqp.Connection> {

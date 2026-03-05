@@ -5,6 +5,7 @@
 import type {
   IAuthenticator,
   ICache,
+  IConnectionManager,
   IMessageRouter,
   INetworkConnection,
   IWebsocketConnection,
@@ -38,6 +39,7 @@ export class WebsocketNetworkConnection implements INetworkConnection {
   private _httpServersMap: Map<string, http.Server | https.Server>;
   private _authenticator: IAuthenticator;
   private _router: IMessageRouter;
+  private _connectionManager?: IConnectionManager;
   private _doesChargingStationExistByStationId?: (
     tenantId: number,
     stationId: string,
@@ -50,10 +52,12 @@ export class WebsocketNetworkConnection implements INetworkConnection {
     router: IMessageRouter,
     logger?: Logger<ILogObj>,
     doesChargingStationExistByStationId?: (tenantId: number, stationId: string) => Promise<boolean>,
+    connectionManager?: IConnectionManager,
   ) {
     this._cache = cache;
     this._config = config;
     this._doesChargingStationExistByStationId = doesChargingStationExistByStationId;
+    this._connectionManager = connectionManager;
     this._logger = logger
       ? logger.getSubLogger({ name: this.constructor.name })
       : new Logger<ILogObj>({ name: this.constructor.name });
@@ -220,6 +224,12 @@ export class WebsocketNetworkConnection implements INetworkConnection {
       websocketServerConfig,
     );
 
+    if (this._connectionManager && !this._connectionManager.isConnected()) {
+      this._logger.warn('Rejecting websocket upgrade: message broker is not connected.');
+      this._terminateConnectionServiceUnavailable(socket);
+      return;
+    }
+
     try {
       // Resolve tenant at upgrade time (query param, path segment, header),
       // falling back to the server-configured tenant if none provided.
@@ -256,6 +266,13 @@ export class WebsocketNetworkConnection implements INetworkConnection {
    */
   private _terminateConnectionInternalError(socket: Duplex) {
     socket.write('HTTP/1.1 500 Internal Server Error\r\n');
+    socket.write('\r\n');
+    socket.end();
+    socket.destroy();
+  }
+
+  private _terminateConnectionServiceUnavailable(socket: Duplex) {
+    socket.write('HTTP/1.1 503 Service Unavailable\r\n');
     socket.write('\r\n');
     socket.end();
     socket.destroy();
