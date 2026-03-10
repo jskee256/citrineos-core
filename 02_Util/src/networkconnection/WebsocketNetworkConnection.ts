@@ -5,6 +5,7 @@
 import type {
   IAuthenticator,
   ICache,
+  IConnectionManager,
   IMessageRouter,
   INetworkConnection,
   IWebsocketConnection,
@@ -40,6 +41,7 @@ export class WebsocketNetworkConnection implements INetworkConnection {
   private _httpServersMap: Map<string, http.Server | https.Server>;
   private _authenticator: IAuthenticator;
   private _router: IMessageRouter;
+  private _connectionManager?: IConnectionManager;
   private _doesChargingStationExistByStationId?: (
     tenantId: number,
     stationId: string,
@@ -54,11 +56,13 @@ export class WebsocketNetworkConnection implements INetworkConnection {
     logger?: Logger<ILogObj>,
     doesChargingStationExistByStationId?: (tenantId: number, stationId: string) => Promise<boolean>,
     getMaxChargingStationsForTenant?: (tenantId: number) => Promise<number | null>,
+    connectionManager?: IConnectionManager,
   ) {
     this._getMaxChargingStationsForTenant = getMaxChargingStationsForTenant;
     this._cache = cache;
     this._config = config;
     this._doesChargingStationExistByStationId = doesChargingStationExistByStationId;
+    this._connectionManager = connectionManager;
     this._logger = logger
       ? logger.getSubLogger({ name: this.constructor.name })
       : new Logger<ILogObj>({ name: this.constructor.name });
@@ -86,7 +90,16 @@ export class WebsocketNetworkConnection implements INetworkConnection {
         const clientConnection = await this._cache.get(identifier, CacheNamespace.Connections);
         if (clientConnection) {
           const websocketConnection = this._identifierConnections.get(identifier);
-          if (websocketConnection && websocketConnection.readyState === WebSocket.OPEN) {
+          if (!websocketConnection) {
+            const errorMsg = 'Websocket connection not found for ' + identifier;
+            this._logger.fatal(errorMsg);
+            reject(new Error(errorMsg)); // Reject with a new error
+          } else if (websocketConnection.readyState !== WebSocket.OPEN) {
+            const errorMsg = 'Websocket connection is not ready - ' + identifier;
+            this._logger.fatal(errorMsg);
+            websocketConnection?.close(1011, errorMsg);
+            reject(new Error(errorMsg)); // Reject with a new error
+          } else {
             websocketConnection.send(message, (error) => {
               if (error) {
                 reject(error); // Reject the promise with the error
@@ -94,11 +107,6 @@ export class WebsocketNetworkConnection implements INetworkConnection {
                 resolve(); // Resolve the promise with true indicating success
               }
             });
-          } else {
-            const errorMsg = 'Websocket connection is not ready - ' + identifier;
-            this._logger.fatal(errorMsg);
-            websocketConnection?.close(1011, errorMsg);
-            reject(new Error(errorMsg)); // Reject with a new error
           }
         } else {
           const errorMsg = 'Cannot identify client connection for ' + identifier;
@@ -225,6 +233,12 @@ export class WebsocketNetworkConnection implements INetworkConnection {
       websocketServerConfig,
     );
 
+    if (this._connectionManager && !this._connectionManager.isConnected()) {
+      this._logger.warn('Rejecting websocket upgrade: message broker is not connected.');
+      this._terminateConnectionServiceUnavailable(socket);
+      return;
+    }
+
     try {
       // Resolve tenant at upgrade time (query param, path segment, header),
       // falling back to the server-configured tenant if none provided.
@@ -239,6 +253,7 @@ export class WebsocketNetworkConnection implements INetworkConnection {
       const { identifier } = await this._authenticator.authenticate(req, resolvedTenantId, {
         securityProfile: websocketServerConfig.securityProfile,
         allowUnknownChargingStations: websocketServerConfig.allowUnknownChargingStations,
+        ignoreAuthenticationHeaders: websocketServerConfig.ignoreAuthenticationHeaders || false,
       });
 
       this._logger.debug('Successfully registered websocket client', identifier);
@@ -266,6 +281,13 @@ export class WebsocketNetworkConnection implements INetworkConnection {
     socket.destroy();
   }
 
+  private _terminateConnectionServiceUnavailable(socket: Duplex) {
+    socket.write('HTTP/1.1 503 Service Unavailable\r\n');
+    socket.write('\r\n');
+    socket.end();
+    socket.destroy();
+  }
+
   /**
    * Internal method to handle new client connection and ensures supported protocols are used.
    *
@@ -277,14 +299,16 @@ export class WebsocketNetworkConnection implements INetworkConnection {
   private _handleProtocols(
     protocols: Set<string>,
     _req: http.IncomingMessage,
-    wsServerProtocol: OCPPVersionType,
+    wsServerProtocols: OCPPVersionType[],
   ) {
     // Only supports configured protocol version
-    if (protocols.has(wsServerProtocol)) {
-      return wsServerProtocol;
+    for (const wsServerProtocol of wsServerProtocols) {
+      if (protocols.has(wsServerProtocol)) {
+        return wsServerProtocol;
+      }
     }
     this._logger.error(
-      `Protocol mismatch. Charger supports: [${[...protocols].join(', ')}], but server expects: '${wsServerProtocol}'.`,
+      `Protocol mismatch. Charger supports: [${[...protocols].join(', ')}], but server expects: '${wsServerProtocols.join(', ')}'.`,
     );
     // Reject the client trying to connect
     return false;
@@ -614,7 +638,7 @@ export class WebsocketNetworkConnection implements INetworkConnection {
       const wss = new WebSocketServer({
         noServer: true,
         handleProtocols: (protocols, req) =>
-          this._handleProtocols(protocols, req, wsConfig.protocol as OCPPVersionType),
+          this._handleProtocols(protocols, req, wsConfig.protocols),
         clientTracking: false,
       });
 

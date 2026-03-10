@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import type {
   OCPPVersionType,
-  WebsocketServerConfig,
-  TenantDto,
   ServerNetworkProfileDto,
+  TenantDto,
+  WebsocketServerConfig,
 } from '@citrineos/base';
 import { DEFAULT_TENANT_ID, OCPP2_0_1_Namespace } from '@citrineos/base';
 import {
@@ -44,8 +44,8 @@ export class ServerNetworkProfile
   @Column(DataType.INTEGER)
   declare pingInterval: number;
 
-  @Column(DataType.STRING)
-  declare protocol: OCPPVersionType;
+  @Column(DataType.ARRAY(DataType.STRING))
+  declare protocols: OCPPVersionType[];
 
   @Column(DataType.INTEGER)
   declare messageTimeout: number;
