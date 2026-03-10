@@ -45,6 +45,7 @@ export function createLocalConfig() {
         responses: [
           OCPP2_0_1_CallAction.ChangeAvailability,
           OCPP2_0_1_CallAction.ClearDisplayMessage,
+          OCPP2_0_1_CallAction.DataTransfer,
           OCPP2_0_1_CallAction.GetDisplayMessages,
           OCPP2_0_1_CallAction.PublishFirmware,
           OCPP2_0_1_CallAction.Reset,
