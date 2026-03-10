@@ -211,9 +211,7 @@ export abstract class AbstractModule implements IModule {
    */
 
   /**
-   * Unimplemented method to handle incoming {@link IMessage}.
-   *
-   * **Note**: This method is **programmatically** overridden by the {@link ModuleHandlers} annotation.
+   * Method to handle incoming {@link IMessage}.
    *
    * @param message The {@link IMessage} to handle. Can contain either a {@link OcppRequest} or a {@link OcppResponse} as payload.
    * @param props The {@link HandlerProperties} for this {@link IMessage} containing implementation specific metadata. Metadata is not used in the base implementation.
