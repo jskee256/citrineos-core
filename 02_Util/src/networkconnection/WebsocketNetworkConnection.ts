@@ -234,6 +234,7 @@ export class WebsocketNetworkConnection implements INetworkConnection {
       const { identifier } = await this._authenticator.authenticate(req, resolvedTenantId, {
         securityProfile: websocketServerConfig.securityProfile,
         allowUnknownChargingStations: websocketServerConfig.allowUnknownChargingStations,
+        ignoreAuthenticationHeaders: websocketServerConfig.ignoreAuthenticationHeaders || false,
       });
 
       this._logger.debug('Successfully registered websocket client', identifier);
@@ -272,14 +273,16 @@ export class WebsocketNetworkConnection implements INetworkConnection {
   private _handleProtocols(
     protocols: Set<string>,
     _req: http.IncomingMessage,
-    wsServerProtocol: OCPPVersionType,
+    wsServerProtocols: OCPPVersionType[],
   ) {
     // Only supports configured protocol version
-    if (protocols.has(wsServerProtocol)) {
-      return wsServerProtocol;
+    for (const wsServerProtocol of wsServerProtocols) {
+      if (protocols.has(wsServerProtocol)) {
+        return wsServerProtocol;
+      }
     }
     this._logger.error(
-      `Protocol mismatch. Charger supports: [${[...protocols].join(', ')}], but server expects: '${wsServerProtocol}'.`,
+      `Protocol mismatch. Charger supports: [${[...protocols].join(', ')}], but server expects: '${wsServerProtocols.join(', ')}'.`,
     );
     // Reject the client trying to connect
     return false;
@@ -601,7 +604,7 @@ export class WebsocketNetworkConnection implements INetworkConnection {
       const wss = new WebSocketServer({
         noServer: true,
         handleProtocols: (protocols, req) =>
-          this._handleProtocols(protocols, req, wsConfig.protocol as OCPPVersionType),
+          this._handleProtocols(protocols, req, wsConfig.protocols),
         clientTracking: false,
       });
 
