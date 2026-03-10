@@ -34,6 +34,8 @@ export class WebsocketNetworkConnection implements INetworkConnection {
   protected _config: SystemConfig;
   protected _logger: Logger<ILogObj>;
   private _identifierConnections: Map<string, WebSocket> = new Map();
+  // tenantId as key and number of active connections as value, for O(1) per-tenant count tracking
+  private _tenantConnectionCounts: Map<number, number> = new Map();
   // websocketServers id as key and http server as value
   private _httpServersMap: Map<string, http.Server | https.Server>;
   private _authenticator: IAuthenticator;
@@ -42,6 +44,7 @@ export class WebsocketNetworkConnection implements INetworkConnection {
     tenantId: number,
     stationId: string,
   ) => Promise<boolean>;
+  private _getMaxChargingStationsForTenant?: (tenantId: number) => Promise<number | null>;
 
   constructor(
     config: SystemConfig,
@@ -50,7 +53,9 @@ export class WebsocketNetworkConnection implements INetworkConnection {
     router: IMessageRouter,
     logger?: Logger<ILogObj>,
     doesChargingStationExistByStationId?: (tenantId: number, stationId: string) => Promise<boolean>,
+    getMaxChargingStationsForTenant?: (tenantId: number) => Promise<number | null>,
   ) {
+    this._getMaxChargingStationsForTenant = getMaxChargingStationsForTenant;
     this._cache = cache;
     this._config = config;
     this._doesChargingStationExistByStationId = doesChargingStationExistByStationId;
@@ -334,22 +339,26 @@ export class WebsocketNetworkConnection implements INetworkConnection {
 
       const identifier = createIdentifier(tenantId, stationId);
 
-      // Enforce optional per-tenant connection limit if configured
-      const maxConnections = websocketServerConfig.maxConnectionsPerTenant;
-      if (typeof maxConnections === 'number' && maxConnections > 0) {
-        const currentCount = [...this._identifierConnections.keys()].filter(
-          (k) => getTenantIdFromIdentifier(k) === tenantId,
-        ).length;
-        if (currentCount >= maxConnections) {
-          this._logger.warn(
-            `Tenant ${tenantId} exceeded max connections (${maxConnections}), rejecting ${identifier}`,
-          );
-          ws.close(1013, 'Tenant connection limit exceeded');
-          return;
+      // Enforce per-tenant connection limit from the tenant's maxChargingStations field
+      if (this._getMaxChargingStationsForTenant) {
+        const maxConnections = await this._getMaxChargingStationsForTenant(tenantId);
+        if (typeof maxConnections === 'number' && maxConnections > 0) {
+          const currentCount = this._tenantConnectionCounts.get(tenantId) ?? 0;
+          if (currentCount >= maxConnections) {
+            this._logger.warn(
+              `Tenant ${tenantId} exceeded max connections (${maxConnections}), rejecting ${identifier}`,
+            );
+            ws.close(1013, 'Tenant connection limit exceeded');
+            return;
+          }
         }
       }
 
       this._identifierConnections.set(identifier, ws);
+      this._tenantConnectionCounts.set(
+        tenantId,
+        (this._tenantConnectionCounts.get(tenantId) ?? 0) + 1,
+      );
       try {
         // Get IP address of client
         const ip =
@@ -421,10 +430,14 @@ export class WebsocketNetworkConnection implements INetworkConnection {
       this._logger.info('Connection closed for', identifier);
       this._cache.remove(identifier, CacheNamespace.Connections);
       this._identifierConnections.delete(identifier);
-      this._router.deregisterConnection(
-        getTenantIdFromIdentifier(identifier),
-        getStationIdFromIdentifier(identifier),
-      );
+      const closedTenantId = getTenantIdFromIdentifier(identifier);
+      const prevCount = this._tenantConnectionCounts.get(closedTenantId) ?? 0;
+      if (prevCount <= 1) {
+        this._tenantConnectionCounts.delete(closedTenantId);
+      } else {
+        this._tenantConnectionCounts.set(closedTenantId, prevCount - 1);
+      }
+      this._router.deregisterConnection(closedTenantId, getStationIdFromIdentifier(identifier));
     });
 
     ws.on('ping', async (message) => {

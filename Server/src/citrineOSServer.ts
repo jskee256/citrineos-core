@@ -377,6 +377,10 @@ export class CitrineOSServer {
       this._repositoryStore.locationRepository.doesChargingStationExistByStationId.bind(
         this._repositoryStore.locationRepository,
       ),
+      async (tenantId: number) => {
+        const tenant = await this._repositoryStore.tenantRepository.readByKey(tenantId, tenantId);
+        return tenant?.maxChargingStations ?? null;
+      },
     );
 
     this._router.networkHook = this._networkConnection.bindNetworkHook();
