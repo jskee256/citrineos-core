@@ -556,8 +556,17 @@ export class WebsocketNetworkConnection implements INetworkConnection {
           pingInterval * 2,
         );
         ws.ping();
+
+        // If no pong comes back within pingInterval, the connection is dead.
+        // Terminate the socket to trigger the close handler and clean up.
+        const pongTimeout = setTimeout(() => {
+          this._logger.warn('No pong received from', identifier, '- terminating dead connection');
+          ws.terminate();
+        }, pingInterval * 1000);
+
+        ws.once('pong', () => clearTimeout(pongTimeout));
       } else {
-        ws.close(1011, 'Client is not alive');
+        ws.terminate();
       }
     }, pingInterval * 1000);
   }
