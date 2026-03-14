@@ -334,6 +334,20 @@ export class WebsocketNetworkConnection implements INetworkConnection {
 
       const identifier = createIdentifier(tenantId, stationId);
 
+      // If the same station is already connected, clean up the old connection
+      // before registering the new one. This handles chargers that reconnect
+      // after a network drop before the server detects the disconnect.
+      const existingWs = this._identifierConnections.get(identifier);
+      if (existingWs) {
+        this._logger.info(
+          `Station ${identifier} is already connected, closing old connection to allow reconnect`,
+        );
+        this._identifierConnections.delete(identifier);
+        await this._cache.remove(identifier, CacheNamespace.Connections);
+        await this._router.deregisterConnection(tenantId, stationId);
+        existingWs.close(1012, 'Replaced by new connection');
+      }
+
       // Enforce optional per-tenant connection limit if configured
       const maxConnections = websocketServerConfig.maxConnectionsPerTenant;
       if (typeof maxConnections === 'number' && maxConnections > 0) {
@@ -417,7 +431,14 @@ export class WebsocketNetworkConnection implements INetworkConnection {
     };
 
     ws.once('close', () => {
-      // Unregister client
+      // Unregister client — but only if this ws is still the active connection
+      // for this identifier. If a newer connection replaced us, skip cleanup
+      // since it was already handled during the reconnect.
+      const currentWs = this._identifierConnections.get(identifier);
+      if (currentWs !== ws) {
+        this._logger.info('Connection closed for', identifier, '(already replaced, skipping cleanup)');
+        return;
+      }
       this._logger.info('Connection closed for', identifier);
       this._cache.remove(identifier, CacheNamespace.Connections);
       this._identifierConnections.delete(identifier);
