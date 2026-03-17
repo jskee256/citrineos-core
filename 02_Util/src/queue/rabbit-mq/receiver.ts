@@ -111,10 +111,10 @@ export class RabbitMqReceiver extends AbstractMessageHandler {
     const channel = this._channel;
 
     // Assert exchange and queue
-    await channel.assertExchange(exchange, 'headers', { durable: false });
+    await channel.assertExchange(exchange, 'headers', { durable: true });
     await channel.assertQueue(queueName, {
-      durable: false,
-      autoDelete: true,
+      durable: true,
+      autoDelete: false,
       exclusive: false,
     });
 
