@@ -40,7 +40,7 @@ export const websocketServerInputSchema = z.object({
   // charging station certificate and csms certificate)
   rootCACertificateFilePath: z.string().optional(), // Root CA certificate that overrides default CA certificates
   // allowed by Mozilla
-  tenantId: z.number(),
+  tenantId: z.number().optional(),
   // Mapping from path segments to tenant IDs.
   // Example: { "my-tenant": 1 }
   tenantPathMapping: z.record(z.string(), z.number()).optional(),
