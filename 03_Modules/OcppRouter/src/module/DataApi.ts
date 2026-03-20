@@ -42,7 +42,6 @@ import {
   WebsocketDeleteQuerySchema,
   WebsocketGetQuerySchema,
   WebsocketMappingQuerySchema,
-  WebsocketMappingRequestSchema,
   WebsocketRequestSchema,
 } from '@citrineos/data';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
@@ -186,12 +185,7 @@ export class AdminApi extends AbstractModuleApi<IMessageRouter> implements IAdmi
   /**
    * Adds or updates a mapping from a path segment to a tenant for a specific websocket server.
    */
-  @AsDataEndpoint(
-    Namespace.WebsocketMapping,
-    HttpMethod.Put,
-    WebsocketMappingQuerySchema,
-    WebsocketMappingRequestSchema,
-  )
+  @AsDataEndpoint(Namespace.WebsocketMapping, HttpMethod.Put, WebsocketMappingQuerySchema)
   async putWebsocketMapping(
     request: FastifyRequest<{
       Querystring: WebsocketMappingQuerystring;
