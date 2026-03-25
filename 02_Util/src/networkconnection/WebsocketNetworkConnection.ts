@@ -16,6 +16,7 @@ import type {
 import {
   CacheNamespace,
   createIdentifier,
+  getCacheTenantPathMappingKey,
   getStationIdFromIdentifier,
   getTenantIdFromIdentifier,
 } from '@citrineos/base';
@@ -244,7 +245,7 @@ export class WebsocketNetworkConnection implements INetworkConnection {
       // Resolve tenant at upgrade time (query param, path segment, header),
       // falling back to the server-configured tenant if none provided.
       const resolvedTenantId = websocketServerConfig.dynamicTenantResolution
-        ? this._extractTenantIdFromRequest(req, websocketServerConfig)
+        ? await this._extractTenantIdFromRequest(req, websocketServerConfig)
         : websocketServerConfig.tenantId;
 
       if (resolvedTenantId === undefined) {
@@ -575,10 +576,10 @@ export class WebsocketNetworkConnection implements INetworkConnection {
    * Supported sources (in order): query `tenant`/`tenantId`, header `x-tenant-id`,
    * path segment (second-last segment if URL is `/tenant/station`).
    */
-  private _extractTenantIdFromRequest(
+  private async _extractTenantIdFromRequest(
     req: http.IncomingMessage,
     config: WebsocketServerConfig,
-  ): number | undefined {
+  ): Promise<number | undefined> {
     try {
       const rawUrl = req.url ?? '';
       const url = new URL(rawUrl, 'http://localhost');
@@ -588,11 +589,15 @@ export class WebsocketNetworkConnection implements INetworkConnection {
       // We look for a mapping of pathSegment to tenantId.
       if (segments.length >= 2 && config.tenantPathMapping) {
         const pathSegment = segments[segments.length - 2];
-        if (config.tenantPathMapping[pathSegment]) {
-          return config.tenantPathMapping[pathSegment];
-        } else {
+
+        const cachedTenantIdString = await this._cache.get<string>(
+          getCacheTenantPathMappingKey(config.id, pathSegment),
+          CacheNamespace.TenantPathMapping,
+        );
+        if (!cachedTenantIdString) {
           this._logger.debug(`No mapping found for path segment: ${pathSegment}`);
         }
+        return cachedTenantIdString ? Number(cachedTenantIdString) : undefined;
       }
     } catch (err) {
       // If parsing fails, ignore and fall back to server-configured tenant
@@ -624,6 +629,14 @@ export class WebsocketNetworkConnection implements INetworkConnection {
   private _createAndStartWebsocketServer(
     wsConfig: WebsocketServerConfig,
   ): Promise<http.Server | https.Server> {
+    for (const [key, value] of Object.entries(wsConfig.tenantPathMapping ?? {})) {
+      this._cache.set(
+        getCacheTenantPathMappingKey(wsConfig.id, key),
+        value.toString(),
+        CacheNamespace.TenantPathMapping,
+      );
+    }
+
     return new Promise((resolve) => {
       let httpServer: http.Server | https.Server;
       switch (wsConfig.securityProfile) {

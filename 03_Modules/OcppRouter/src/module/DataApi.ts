@@ -12,8 +12,10 @@ import {
   AbstractModuleApi,
   AsDataEndpoint,
   BadRequestError,
+  CacheNamespace,
   ConfigStoreFactory,
   DEFAULT_TENANT_ID,
+  getCacheTenantPathMappingKey,
   HttpMethod,
   Namespace,
   NotFoundError,
@@ -193,6 +195,8 @@ export class AdminApi extends AbstractModuleApi<IMessageRouter> implements IAdmi
   ): Promise<WebsocketServerConfig> {
     const { id: serverId, path, tenantId } = request.query;
 
+    this._module.config = (await ConfigStoreFactory.getInstance().fetchConfig())!;
+
     const websocketConfig = this._module.config.util.networkConnection.websocketServers.find(
       (ws) => ws.id === serverId,
     );
@@ -222,6 +226,11 @@ export class AdminApi extends AbstractModuleApi<IMessageRouter> implements IAdmi
       websocketConfig,
       this._module.config.maxCallLengthSeconds,
     );
+    await this._module.cache.set(
+      getCacheTenantPathMappingKey(websocketConfig.id, path),
+      tenantId.toString(),
+      CacheNamespace.TenantPathMapping,
+    );
 
     return websocketConfig;
   }
@@ -236,6 +245,8 @@ export class AdminApi extends AbstractModuleApi<IMessageRouter> implements IAdmi
     }>,
   ): Promise<WebsocketServerConfig> {
     const { id: serverId, path, tenantId } = request.query;
+
+    this._module.config = (await ConfigStoreFactory.getInstance().fetchConfig())!;
 
     const websocketConfig = this._module.config.util.networkConnection.websocketServers.find(
       (ws) => ws.id === serverId,
@@ -260,6 +271,10 @@ export class AdminApi extends AbstractModuleApi<IMessageRouter> implements IAdmi
       await this._serverNetworkProfileRepository.upsertServerNetworkProfile(
         websocketConfig,
         this._module.config.maxCallLengthSeconds,
+      );
+      await this._module.cache.remove(
+        getCacheTenantPathMappingKey(websocketConfig.id, path),
+        CacheNamespace.TenantPathMapping,
       );
     }
 

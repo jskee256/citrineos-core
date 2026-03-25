@@ -80,11 +80,11 @@ export class ServerNetworkProfile
   @ForeignKey(() => Tenant)
   @Column({
     type: DataType.INTEGER,
-    allowNull: false,
+    allowNull: true,
     onUpdate: 'CASCADE',
     onDelete: 'RESTRICT',
   })
-  declare tenantId: number;
+  declare tenantId?: number;
 
   @BelongsTo(() => Tenant)
   declare tenant?: TenantDto;
