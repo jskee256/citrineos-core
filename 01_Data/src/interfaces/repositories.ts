@@ -356,6 +356,12 @@ export interface ITransactionEventRepository extends CrudRepository<TransactionE
     transactionId: string,
     stationId: string,
   ): Promise<Transaction | undefined>;
+  deactivateActiveTransactionsByStationIdAndEvseId(
+    tenantId: number,
+    stationId: string,
+    evseId: number,
+    excludeTransactionId: string,
+  ): Promise<Transaction[]>;
 }
 
 export interface IVariableMonitoringRepository extends CrudRepository<VariableMonitoring> {
