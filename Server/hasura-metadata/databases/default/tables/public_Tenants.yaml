@@ -341,15 +341,3 @@ array_relationships:
         table:
           name: Variables
           schema: public
-select_permissions:
-  - role: user
-    permission:
-      columns:
-        - id
-        - createdAt
-        - updatedAt
-      filter:
-        id:
-          _eq: x-hasura-tenant-id
-      allow_aggregations: true
-    comment: ""

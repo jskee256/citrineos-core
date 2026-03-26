@@ -68,28 +68,101 @@ array_relationships:
         table:
           name: VariableAttributes
           schema: public
-select_permissions:
+insert_permissions:
   - role: user
     permission:
+      check:
+        tenantId:
+          _eq: x-hasura-tenant-id
       columns:
-        - isOnline
+        - capabilities
         - chargeBoxSerialNumber
         - chargePointModel
         - chargePointSerialNumber
         - chargePointVendor
+        - coordinates
+        - createdAt
         - firmwareVersion
+        - floorLevel
         - iccid
         - id
         - imsi
+        - isOnline
+        - latestOcppMessageTimestamp
+        - locationId
         - meterSerialNumber
         - meterType
+        - parkingRestrictions
         - protocol
-        - locationId
-        - tenantId
-        - createdAt
         - updatedAt
+        - use16StatusNotification0
+    comment: ""
+select_permissions:
+  - role: user
+    permission:
+      columns:
+        - capabilities
+        - chargeBoxSerialNumber
+        - chargePointModel
+        - chargePointSerialNumber
+        - chargePointVendor
+        - coordinates
+        - createdAt
+        - firmwareVersion
+        - floorLevel
+        - iccid
+        - id
+        - imsi
+        - isOnline
+        - latestOcppMessageTimestamp
+        - locationId
+        - meterSerialNumber
+        - meterType
+        - parkingRestrictions
+        - protocol
+        - updatedAt
+        - use16StatusNotification0
       filter:
         tenantId:
           _eq: x-hasura-tenant-id
       allow_aggregations: true
+    comment: ""
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - capabilities
+        - chargeBoxSerialNumber
+        - chargePointModel
+        - chargePointSerialNumber
+        - chargePointVendor
+        - coordinates
+        - createdAt
+        - firmwareVersion
+        - floorLevel
+        - iccid
+        - id
+        - imsi
+        - isOnline
+        - latestOcppMessageTimestamp
+        - locationId
+        - meterSerialNumber
+        - meterType
+        - parkingRestrictions
+        - protocol
+        - updatedAt
+        - use16StatusNotification0
+      filter:
+        tenantId:
+          _eq: x-hasura-tenant-id
+      check:
+        tenantId:
+          _eq: x-hasura-tenant-id
+    comment: ""
+delete_permissions:
+  - role: user
+    permission:
+      filter:
+        tenantId:
+          _eq: x-hasura-tenant-id
     comment: ""

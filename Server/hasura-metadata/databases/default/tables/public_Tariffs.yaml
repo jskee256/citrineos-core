@@ -26,24 +26,3 @@ array_relationships:
         table:
           name: Transactions
           schema: public
-select_permissions:
-  - role: user
-    permission:
-      columns:
-        - currency
-        - stationId
-        - id
-        - tenantId
-        - authorizationAmount
-        - paymentFee
-        - pricePerKwh
-        - pricePerMin
-        - pricePerSession
-        - taxRate
-        - createdAt
-        - updatedAt
-      filter:
-        tenantId:
-          _eq: x-hasura-tenant-id
-      allow_aggregations: true
-    comment: ""

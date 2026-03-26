@@ -1,6 +1,3 @@
-# SPDX-FileCopyrightText: 2025 Contributors to the CitrineOS Project
-#
-# SPDX-License-Identifier: Apache-2.0
 table:
   name: Transactions
   schema: public
@@ -69,27 +66,101 @@ array_relationships:
         table:
           name: TransactionEvents
           schema: public
+insert_permissions:
+  - role: user
+    permission:
+      check:
+        tenantId:
+          _eq: x-hasura-tenant-id
+      columns:
+        - authorizationId
+        - chargingState
+        - connectorId
+        - createdAt
+        - customData
+        - endTime
+        - evseId
+        - id
+        - isActive
+        - locationId
+        - meterStart
+        - remoteStartId
+        - startTime
+        - stationId
+        - stoppedReason
+        - tariffId
+        - timeSpentCharging
+        - totalCost
+        - totalKwh
+        - transactionId
+        - updatedAt
+    comment: ""
 select_permissions:
   - role: user
     permission:
       columns:
-        - timeSpentCharging
-        - isActive
+        - authorizationId
         - chargingState
-        - stationId
-        - stoppedReason
-        - transactionId
-        - meterStart
+        - connectorId
+        - createdAt
+        - customData
+        - endTime
         - evseId
         - id
+        - isActive
+        - locationId
+        - meterStart
         - remoteStartId
-        - tenantId
+        - startTime
+        - stationId
+        - stoppedReason
+        - tariffId
+        - timeSpentCharging
         - totalCost
         - totalKwh
-        - createdAt
+        - transactionId
         - updatedAt
       filter:
         tenantId:
           _eq: x-hasura-tenant-id
       allow_aggregations: true
+    comment: ""
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - authorizationId
+        - chargingState
+        - connectorId
+        - createdAt
+        - customData
+        - endTime
+        - evseId
+        - id
+        - isActive
+        - locationId
+        - meterStart
+        - remoteStartId
+        - startTime
+        - stationId
+        - stoppedReason
+        - tariffId
+        - timeSpentCharging
+        - totalCost
+        - totalKwh
+        - transactionId
+        - updatedAt
+      filter:
+        tenantId:
+          _eq: x-hasura-tenant-id
+      check:
+        tenantId:
+          _eq: x-hasura-tenant-id
+    comment: ""
+delete_permissions:
+  - role: user
+    permission:
+      filter:
+        tenantId:
+          _eq: x-hasura-tenant-id
     comment: ""

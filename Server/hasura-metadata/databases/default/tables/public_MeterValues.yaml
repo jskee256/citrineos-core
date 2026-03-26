@@ -25,14 +25,16 @@ select_permissions:
     permission:
       columns:
         - connectorId
+        - createdAt
+        - customData
         - id
+        - sampledValue
         - stopTransactionDatabaseId
-        - tenantId
+        - tariffId
+        - timestamp
         - transactionDatabaseId
         - transactionEventId
-        - sampledValue
-        - createdAt
-        - timestamp
+        - transactionId
         - updatedAt
       filter:
         tenantId:

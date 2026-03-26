@@ -33,21 +33,62 @@ array_relationships:
         table:
           name: Transactions
           schema: public
+insert_permissions:
+  - role: user
+    permission:
+      check:
+        tenantId:
+          _eq: x-hasura-tenant-id
+      columns:
+        - createdAt
+        - evseId
+        - evseTypeId
+        - id
+        - physicalReference
+        - removed
+        - stationId
+        - updatedAt
+    comment: ""
 select_permissions:
   - role: user
     permission:
       columns:
-        - id
-        - stationId
-        - evseTypeId
+        - createdAt
         - evseId
+        - evseTypeId
+        - id
         - physicalReference
         - removed
-        - tenantId
-        - createdAt
+        - stationId
         - updatedAt
       filter:
         tenantId:
           _eq: x-hasura-tenant-id
       allow_aggregations: true
+    comment: ""
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - createdAt
+        - evseId
+        - evseTypeId
+        - id
+        - physicalReference
+        - removed
+        - stationId
+        - updatedAt
+      filter:
+        tenantId:
+          _eq: x-hasura-tenant-id
+      check:
+        tenantId:
+          _eq: x-hasura-tenant-id
+    comment: ""
+delete_permissions:
+  - role: user
+    permission:
+      filter:
+        tenantId:
+          _eq: x-hasura-tenant-id
     comment: ""
