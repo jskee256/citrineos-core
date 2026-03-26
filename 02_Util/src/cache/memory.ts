@@ -57,6 +57,16 @@ export class MemoryCache implements ICache {
     return Promise.resolve(this._cache.has(namespaceKey));
   }
 
+  existsAnyInNamespace(namespace: string): Promise<boolean> {
+    const prefix = `${namespace}:`;
+    for (const key of this._cache.keys()) {
+      if (key.startsWith(prefix)) {
+        return Promise.resolve(true);
+      }
+    }
+    return Promise.resolve(false);
+  }
+
   async remove(key: string, namespace?: string): Promise<boolean> {
     namespace = namespace || 'default';
     const namespaceKey = `${namespace}:${key}`;

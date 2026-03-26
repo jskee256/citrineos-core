@@ -11,6 +11,15 @@ import type { ClassConstructor } from 'class-transformer';
  */
 export interface ICache {
   exists(key: string, namespace?: string): Promise<boolean>;
+
+  /**
+   * Returns true if any keys exist in the given namespace.
+   *
+   * @param {string} namespace - The namespace to check.
+   * @returns {Promise<boolean>} - Returns true if at least one key exists in the namespace.
+   * */
+  existsAnyInNamespace(namespace: string): Promise<boolean>;
+
   remove(key: string, namespace?: string): Promise<boolean>;
 
   /**

@@ -40,6 +40,11 @@ export class RedisCache implements ICache {
     return this._client.exists(key).then((result) => result === 1);
   }
 
+  async existsAnyInNamespace(namespace: string): Promise<boolean> {
+    const keys = await this._client.keys(`${namespace}:*`);
+    return keys.length > 0;
+  }
+
   remove(key: string, namespace?: string | undefined): Promise<boolean> {
     namespace = namespace || 'default';
     key = `${namespace}:${key}`;
