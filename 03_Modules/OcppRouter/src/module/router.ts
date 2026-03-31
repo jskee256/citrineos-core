@@ -325,15 +325,16 @@ export class MessageRouterImpl extends AbstractMessageRouter implements IMessage
     _origin?: MessageOrigin,
   ): Promise<IMessageConfirmation> {
     const identifier = createIdentifier(tenantId, stationId);
+    const transactionNamespace = CacheNamespace.Transactions + identifier;
 
     const message: Call = [MessageTypeId.Call, correlationId, action, payload];
     if (await this._sendCallIsAllowed(identifier, protocol, message)) {
-      if (!(await this._cache.existsAnyInNamespace(CacheNamespace.Transactions + identifier))) {
+      if (!(await this._cache.existsAnyInNamespace(transactionNamespace))) {
         const cacheTimestamp = new Date();
         await this._cache.set(
           correlationId,
           `${action}@${cacheTimestamp.toISOString()}`,
-          CacheNamespace.Transactions + identifier,
+          transactionNamespace,
           this._config.maxCallLengthSeconds,
         );
         const rawMessage = JSON.stringify(message);
@@ -354,10 +355,7 @@ export class MessageRouterImpl extends AbstractMessageRouter implements IMessage
             message,
           );
         } else {
-          const removed = await this._cache.remove(
-            correlationId,
-            CacheNamespace.Transactions + identifier,
-          );
+          const removed = await this._cache.remove(correlationId, transactionNamespace);
           this._logger.warn(
             `Failed to send call, removed from cache: ${removed}`,
             identifier,
@@ -760,12 +758,23 @@ export class MessageRouterImpl extends AbstractMessageRouter implements IMessage
    *
    * @param {CallAction} action - The action to be checked.
    * @param {string} identifier - The identifier to be checked.
-   * @return {Promise<Date | undefined>} A promise that resolves to the timestamp of when the message was sent or undefined if the message failed to send.
+   * @return {Promise<boolean>} A promise that resolves to a boolean indicating if the action and identifier are allowed.
    */
   private _onCallIsAllowed(action: CallAction, identifier: string): Promise<boolean> {
     return this._cache.exists(action, identifier).then((blacklisted) => !blacklisted);
   }
 
+  /**
+   *
+   * @param {string} identifier - The identifier of the client, e.g. "tenantId:stationId".
+   * @param {OCPPVersionType} protocol - The OCPP protocol version.
+   * @param {string} action - The OCPP CallAction to be sent. See {@link CallAction}.
+   * @param {MessageState} state - The state of the message. Used for dispatching in webhook.
+   * @param {string} rawMessage - The raw message string to be sent, i.e. the stringified version of the rpc message. Used for sending in webhook and logging.
+   * @param {any} rpcMessage - the rpc message json object, i.e. [MessageTypeId, messageId, action, payload] for Call or [MessageTypeId, messageId, payload] for CallResult. Used for logging and dispatching in webhook.
+   * @param {string} receivedIsoTimestamp - The ISO timestamp of when the Call was received, if this is a response to a Call. Used for logging the time taken for the message to be sent since it was received.
+   * @returns {Promise<Date | undefined>} A promise that resolves to the timestamp of when the message was sent or undefined if the message failed to send.
+   */
   private async _sendMessage(
     identifier: string,
     protocol: OCPPVersionType,
