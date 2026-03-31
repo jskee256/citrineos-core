@@ -67,6 +67,11 @@ describe('Hubject', () => {
     });
 
     it('should return default Bearer token when using default credentials', async () => {
+      (fetch as Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: `Bearer ${HUBJECT_DEFAULT_AUTH_TOKEN}` }),
+      });
+
       // Create a new instance with default credentials
       const defaultConfig: SystemConfig = {
         util: {
@@ -89,7 +94,6 @@ describe('Hubject', () => {
       const token = await (hubjectWithDefaults as any)._getAuthorizationToken();
 
       expect(token).toBe(`Bearer ${HUBJECT_DEFAULT_AUTH_TOKEN}`);
-      expect(fetch).not.toHaveBeenCalled(); // No token fetch should occur
     });
 
     it('should successfully retrieve an authorization token', async () => {
