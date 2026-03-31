@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import {
   HttpStatus,
-  HUBJECT_DEFAULT_AUTH_TOKEN,
   HUBJECT_DEFAULT_BASEURL,
   HUBJECT_DEFAULT_CLIENTID,
   HUBJECT_DEFAULT_CLIENTSECRET,
@@ -14,7 +13,11 @@ import type { ILogObj } from 'tslog';
 import { Logger } from 'tslog';
 import { faker } from '@faker-js/faker';
 import { Hubject } from '../../../src/certificate/client/hubject.js';
-import { aValidRootCertificates, aValidSignedContractData } from '../../providers/Hubject.js';
+import {
+  aValidRootCertificates,
+  aValidSignedContractData,
+  HUBJECT_DEFAULT_AUTH_TOKEN,
+} from '../../providers/Hubject.js';
 import { afterEach, beforeEach, describe, expect, it, Mock, vi } from 'vitest';
 import { MemoryCache } from '../../../src';
 
