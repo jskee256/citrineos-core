@@ -195,7 +195,7 @@ export function createDockerConfig() {
           {
             id: '0',
             securityProfile: 0,
-            allowUnknownChargingStations: true,
+            allowUnknownChargingStations: process.env.CITRINEOS_ALLOW_UNKNOWN_STATIONS === 'true',
             pingInterval: 60,
             host: '0.0.0.0',
             port: 8081,
