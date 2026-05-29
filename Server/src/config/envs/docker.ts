@@ -289,7 +289,7 @@ export function createDockerConfig() {
         },
       },
     },
-    logLevel: 2, // debug
+    logLevel: 3, // info (raised from debug to cut Cloud Logging ingestion volume)
     maxCallLengthSeconds: 20,
     maxCachingSeconds: 30,
     ocpiServer: {
