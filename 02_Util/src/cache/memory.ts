@@ -70,6 +70,11 @@ export class MemoryCache implements ICache {
   async remove(key: string, namespace?: string): Promise<boolean> {
     namespace = namespace || 'default';
     const namespaceKey = `${namespace}:${key}`;
+    const timeout = this._timeoutMap.get(namespaceKey);
+    if (timeout) {
+      clearTimeout(timeout);
+      this._timeoutMap.delete(namespaceKey);
+    }
     return this._cache.delete(namespaceKey);
   }
 
@@ -155,6 +160,7 @@ export class MemoryCache implements ICache {
         namespaceKey,
         setTimeout(() => {
           this._cache.delete(namespaceKey);
+          this._timeoutMap.delete(namespaceKey);
         }, expireSeconds * 1000),
       );
     }
@@ -182,6 +188,7 @@ export class MemoryCache implements ICache {
         namespaceKey,
         setTimeout(() => {
           this._cache.delete(namespaceKey);
+          this._timeoutMap.delete(namespaceKey);
         }, expireSeconds * 1000),
       );
     }
@@ -202,6 +209,7 @@ export class MemoryCache implements ICache {
       namespaceKey,
       setTimeout(() => {
         this._cache.delete(namespaceKey);
+        this._timeoutMap.delete(namespaceKey);
       }, expireSeconds * 1000),
     );
     return true;
