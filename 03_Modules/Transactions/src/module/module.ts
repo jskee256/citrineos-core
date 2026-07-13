@@ -620,6 +620,28 @@ export class TransactionsModule extends AbstractModule {
       request.connectorId,
     );
 
+    if (response.idTagInfo.status === OCPP1_6.StartTransactionResponseStatus.ConcurrentTx) {
+      const retried = await Transaction.findOne({
+        where: { tenantId, stationId, isActive: true },
+        include: [
+          {
+            model: StartTransaction,
+            required: true,
+            where: { meterStart: request.meterStart, timestamp: new Date(request.timestamp) },
+          },
+        ],
+      });
+      if (retried) {
+        this._logger.warn(
+          `StartTransaction retry at ${stationId} — replaying txn ${retried.transactionId}`,
+        );
+        response.idTagInfo.status = OCPP1_6.StartTransactionResponseStatus.Accepted;
+        response.transactionId = parseInt(retried.transactionId);
+        await this.sendCallResultWithMessage(message, response);
+        return;
+      }
+    }
+
     // Send response to charger
     if (response.idTagInfo.status !== OCPP1_6.StartTransactionResponseStatus.Accepted) {
       await this.sendCallResultWithMessage(message, response);
